@@ -1,0 +1,16 @@
+{
+  "name": "family-tree",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev:api": "wrangler dev --port 8787",
+    "dev:web": "serve web --listen 5500 --no-clipboard",
+    "db:migrate:local": "wrangler d1 migrations apply familytreedb --local",
+    "db:migrate:remote": "wrangler d1 migrations apply familytreedb --remote",
+    "deploy:api": "wrangler deploy"
+  },
+  "devDependencies": {
+    "serve": "^14.2.6",
+    "wrangler": "^4.149.0"
+  }
+}

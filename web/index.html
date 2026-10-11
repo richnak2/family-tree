@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <!-- connect-src must include the API address from config.js -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; img-src 'self' data: blob:; connect-src 'self' http://localhost:8787 https://*.workers.dev; base-uri 'none'; form-action 'none'">
+  <title>Family Tree</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232f6f5e' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='12' cy='5' r='2.5'/%3E%3Ccircle cx='5' cy='19' r='2.5'/%3E%3Ccircle cx='19' cy='19' r='2.5'/%3E%3Cpath d='M12 7.5V12M5 16.5V12h14v4.5'/%3E%3C/svg%3E">
+  <script src="theme-init.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/family-chart@0.9.0/dist/styles/family-chart.css"
+        integrity="sha384-tfla6StxLh8aWnGW/DKCjr/qaL6VNMSVqqiJr/I6MJuOAfFc5nl8F1l8gBy3NHzG" crossorigin="anonymous">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <button type="button" class="icon-btn theme-toggle floating" aria-label="Toggle dark mode"></button>
+
+  <main id="login-view" class="login" hidden>
+    <form id="login-form" class="login-card">
+      <div class="login-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="5" r="2.5"/><circle cx="5" cy="19" r="2.5"/><circle cx="19" cy="19" r="2.5"/><path d="M12 7.5V12M5 16.5V12h14v4.5"/></svg>
+      </div>
+      <h1>Family Tree</h1>
+      <p class="muted">Enter the family password to continue.</p>
+      <label for="password">Password</label>
+      <input id="password" name="password" type="password" autocomplete="current-password" required>
+      <p id="login-error" class="form-error" role="alert" hidden></p>
+      <button id="login-submit" type="submit" class="btn btn-primary">Unlock</button>
+    </form>
+  </main>
+
+  <div id="app-view" class="app" hidden>
+    <header class="topbar">
+      <h1 class="brand">Family Tree</h1>
+      <div class="search">
+        <input id="search" type="search" placeholder="Find a person…" autocomplete="off" aria-label="Find a person" aria-controls="search-results">
+        <ul id="search-results" class="search-results" role="listbox" hidden></ul>
+      </div>
+      <div class="topbar-actions">
+        <span id="save-status" class="save-status" aria-live="polite"></span>
+        <button type="button" class="icon-btn theme-toggle" aria-label="Toggle dark mode"></button>
+        <button type="button" id="lock-btn" class="icon-btn" aria-label="Lock" title="Lock">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+        </button>
+      </div>
+    </header>
+    <div id="chart-message" class="chart-message" hidden></div>
+    <div id="FamilyChart" class="f3"></div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"
+          integrity="sha384-CjloA8y00+1SDAUkjs099PVfnY2KmDC2BZnws9kh8D/lX1s46w6EPhpXdqMfjK6i" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/family-chart@0.9.0/dist/family-chart.min.js"
+          integrity="sha384-NM8dDml1dIv0ER64ifVPPKyets2Cl2cM8nScTMGb4CwgjGziYwIrOT4W7AI6zc83" crossorigin="anonymous"></script>
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

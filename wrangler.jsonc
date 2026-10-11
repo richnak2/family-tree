@@ -1,0 +1,19 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "family-tree-api",
+  "main": "worker/index.js",
+  "compatibility_date": "2026-09-01",
+  "observability": { "enabled": true },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "familytreedb",
+      "database_id": "1833de93-00ea-4909-aac7-a17754bb6c30"
+    }
+  ],
+  "vars": {
+    // Pages that may call this API (comma-separated). Local dev overrides this in .dev.vars.
+    "ALLOWED_ORIGINS": "https://richnak2.github.io"
+  }
+  // Secret (not stored here): APP_PASSWORD — set with `npx wrangler secret put APP_PASSWORD`.
+}
