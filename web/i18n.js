@@ -20,6 +20,8 @@ const STRINGS = {
     toLight: 'Switch to light mode',
     language: 'Language',
     fitTree: 'Fit the tree to the screen',
+    wholeTree: 'Whole tree',
+    overviewHint: 'Click a person to open them. Zoom with the mouse wheel or two fingers.',
 
     loading: 'Loading family tree…',
     tryAgain: 'Try again',
@@ -103,6 +105,8 @@ const STRINGS = {
     toLight: 'Prepnúť na svetlý režim',
     language: 'Jazyk',
     fitTree: 'Zobraziť celý strom na obrazovke',
+    wholeTree: 'Celý rodokmeň',
+    overviewHint: 'Kliknutím na osobu ju otvoríte. Priblížite kolieskom myši alebo dvoma prstami.',
 
     loading: 'Načítava sa rodokmeň…',
     tryAgain: 'Skúsiť znova',

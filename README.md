@@ -2,7 +2,7 @@
 
 A password-protected family tree. Add people, connect parents, partners and children, and store personal details and a photo for each person. Light and dark mode, in English or Slovak (texts live in `web/i18n.js`).
 
-- **`web/`**: the page, hosted on GitHub Pages. Uses [family-chart](https://github.com/donatso/family-chart) to draw the tree.
+- **`web/`**: the page, hosted on GitHub Pages. Uses [family-chart](https://github.com/donatso/family-chart) to draw and edit the tree around one person, and [dagre](https://github.com/dagrejs/dagre) for the "Whole tree" view that shows everyone at once (`web/overview.js`).
 - **`worker/`**: a small Cloudflare Worker API that checks the password and reads/writes the `familytreedb` D1 database.
 
 The password only lives on Cloudflare as a secret. It never appears in this (public) repository.

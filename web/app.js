@@ -36,12 +36,15 @@ let syncQueue = Promise.resolve();
 let syncState = 'idle';
 let syncError = '';
 let paintThemeButtons = () => {};
+let overview = null; // "whole tree" view, created on first open
+let overviewOpen = false;
 
 setupTheme();
 setupLanguage();
 setupLogin();
 setupSearch();
 setupFit();
+$('#overview-btn').addEventListener('click', () => (overviewOpen ? setOverviewOpen(false) : openOverview()));
 $('#lock-btn').addEventListener('click', lock);
 window.addEventListener('beforeunload', (e) => {
   if (hasUnsavedChanges()) e.preventDefault();
@@ -217,6 +220,7 @@ function buildChart(people) {
   if (!isEmpty) chart.updateMainId(bestStartingPerson(people));
   chart.updateTree({ initial: true });
   $('#fit-btn').hidden = false;
+  $('#overview-btn').hidden = false;
   if (isEmpty) editTree.open(chart.getMainDatum());
   editTree.setEditFirst(false);
 }
@@ -632,7 +636,10 @@ async function resizePhoto(file, maxSize = 320) {
 // size, and let people refit by hand after zooming or dragging the tree away.
 function setupFit() {
   const area = $('#FamilyChart');
-  $('#fit-btn').addEventListener('click', () => chart?.updateTree({ tree_position: 'fit' }));
+  $('#fit-btn').addEventListener('click', () => {
+    if (overviewOpen) overview.fit();
+    else chart?.updateTree({ tree_position: 'fit' });
+  });
 
   let hadSize = false;
   new ResizeObserver(() => {
@@ -640,6 +647,42 @@ function setupFit() {
     if (chart && hasSize && !hadSize) chart.updateTree({ tree_position: 'fit', transition_time: 0 });
     hadSize = hasSize;
   }).observe(area);
+}
+
+// ---------- whole tree view ----------
+
+function openOverview() {
+  if (!chart) return;
+  cancelRelativeModes();
+  overview ??= createOverview($('#overview'), { onSelect: focusPerson });
+  setOverviewOpen(true);
+  renderOverview();
+  overview.fit();
+}
+
+function renderOverview() {
+  overview.render(editTree.exportData().map(normalize), chart.getMainDatum()?.id);
+}
+
+function setOverviewOpen(open) {
+  overviewOpen = open;
+  $('#overview').hidden = !open;
+  $('#FamilyChart').hidden = open;
+  $('#overview-btn').setAttribute('aria-pressed', String(open));
+}
+
+// Show one person in the main chart and open their panel (from search or the whole tree view).
+function focusPerson(id) {
+  if (overviewOpen) setOverviewOpen(false);
+  cancelRelativeModes();
+  chart.updateMainId(id);
+  chart.updateTree({ tree_position: 'main_to_middle' });
+  editTree.openFormWithId(id);
+}
+
+function cancelRelativeModes() {
+  if (editTree.isAddingRelative()) editTree.addRelativeInstance.onCancel();
+  if (editTree.isRemovingRelative()) editTree.removeRelativeInstance.onCancel();
 }
 
 // ---------- search ----------
@@ -693,11 +736,7 @@ function setupSearch() {
     input.value = '';
     list.hidden = true;
     input.blur();
-    if (editTree.isAddingRelative()) editTree.addRelativeInstance.onCancel();
-    if (editTree.isRemovingRelative()) editTree.removeRelativeInstance.onCancel();
-    chart.updateMainId(id);
-    chart.updateTree({ tree_position: 'main_to_middle' });
-    editTree.openFormWithId(id);
+    focusPerson(id);
   }
 }
 
@@ -753,6 +792,7 @@ function setLanguage(next) {
   } catch {}
   applyLanguage();
   if (chart) refreshChartLanguage();
+  if (overviewOpen) renderOverview();
 }
 
 function applyLanguage() {

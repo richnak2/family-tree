@@ -39,9 +39,15 @@
   <div id="app-view" class="app" hidden>
     <header class="topbar">
       <h1 class="brand" data-i18n="appTitle">Family Tree</h1>
-      <div class="search">
-        <input id="search" type="search" autocomplete="off" aria-controls="search-results" data-i18n-placeholder="searchPlaceholder" data-i18n-label="searchLabel">
-        <ul id="search-results" class="search-results" role="listbox" hidden></ul>
+      <div class="search-row">
+        <div class="search">
+          <input id="search" type="search" autocomplete="off" aria-controls="search-results" data-i18n-placeholder="searchPlaceholder" data-i18n-label="searchLabel">
+          <ul id="search-results" class="search-results" role="listbox" hidden></ul>
+        </div>
+        <button type="button" id="overview-btn" class="btn overview-toggle" aria-pressed="false" hidden>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="2" width="6" height="5" rx="1"/><rect x="2" y="17" width="6" height="5" rx="1"/><rect x="16" y="17" width="6" height="5" rx="1"/><path d="M12 7v5M5 17v-5h14v5"/></svg>
+          <span data-i18n="wholeTree">Whole tree</span>
+        </button>
       </div>
       <div class="topbar-actions">
         <span id="save-status" class="save-status" aria-live="polite"></span>
@@ -57,6 +63,7 @@
     </header>
     <div id="chart-message" class="chart-message" hidden></div>
     <div id="FamilyChart" class="f3"></div>
+    <div id="overview" class="overview" hidden></div>
     <button type="button" id="fit-btn" class="icon-btn fit-btn" data-i18n-label="fitTree" hidden>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
     </button>
@@ -66,8 +73,11 @@
           integrity="sha384-CjloA8y00+1SDAUkjs099PVfnY2KmDC2BZnws9kh8D/lX1s46w6EPhpXdqMfjK6i" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/family-chart@0.9.0/dist/family-chart.min.js"
           integrity="sha384-NM8dDml1dIv0ER64ifVPPKyets2Cl2cM8nScTMGb4CwgjGziYwIrOT4W7AI6zc83" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@dagrejs/dagre@3.1.1/dist/dagre.min.js"
+          integrity="sha384-PHeXhmSy7tXR21c872Ck1MW+PDzqMB8JuNgHgRQ4oki7W3jBH2NBAnObIV5vxDeL" crossorigin="anonymous"></script>
   <script src="config.js"></script>
   <script src="i18n.js"></script>
+  <script src="overview.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
