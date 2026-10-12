@@ -41,6 +41,7 @@ setupTheme();
 setupLanguage();
 setupLogin();
 setupSearch();
+setupFit();
 $('#lock-btn').addEventListener('click', lock);
 window.addEventListener('beforeunload', (e) => {
   if (hasUnsavedChanges()) e.preventDefault();
@@ -182,6 +183,7 @@ function buildChart(people) {
     .setTransitionTime(600)
     .setCardXSpacing(260)
     .setCardYSpacing(170)
+    .setShowSiblingsOfMain(true)
     .setSingleParentEmptyCard(true, { label: t('unknown') });
 
   // family-chart inserts card text as HTML, so everything we hand it is escaped.
@@ -212,7 +214,9 @@ function buildChart(people) {
   };
 
   applyChartLanguage();
+  if (!isEmpty) chart.updateMainId(bestStartingPerson(people));
   chart.updateTree({ initial: true });
+  $('#fit-btn').hidden = false;
   if (isEmpty) editTree.open(chart.getMainDatum());
   editTree.setEditFirst(false);
 }
@@ -232,6 +236,38 @@ function refreshAddRelativeCards(submitted) {
   } finally {
     adding.cancelCallback = reopen;
   }
+}
+
+// family-chart only draws the focused person's ancestors, descendants (with their partners),
+// partners and siblings. Start on whoever brings the most people into view.
+function bestStartingPerson(people) {
+  const byId = new Map(people.map((p) => [p.id, p]));
+  const reachable = (startId, kind) => {
+    const found = new Set();
+    const stack = [...byId.get(startId).rels[kind]];
+    while (stack.length) {
+      const id = stack.pop();
+      if (found.has(id) || !byId.has(id)) continue;
+      found.add(id);
+      stack.push(...byId.get(id).rels[kind]);
+    }
+    return found;
+  };
+
+  let best = people[0].id;
+  let bestCount = 0;
+  for (const person of people) {
+    if (person.unknown) continue;
+    const descendants = reachable(person.id, 'children');
+    const visible = new Set([person.id, ...reachable(person.id, 'parents'), ...descendants]);
+    for (const id of [person.id, ...descendants]) byId.get(id).rels.spouses.forEach((s) => visible.add(s));
+    for (const parentId of person.rels.parents) byId.get(parentId).rels.children.forEach((c) => visible.add(c));
+    if (visible.size > bestCount) {
+      best = person.id;
+      bestCount = visible.size;
+    }
+  }
+  return best;
 }
 
 // Labels family-chart draws itself: placeholder cards and the "link existing person" picker.
@@ -587,6 +623,23 @@ async function resizePhoto(file, maxSize = 320) {
   ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
   bitmap.close();
   return canvas.toDataURL('image/jpeg', 0.85);
+}
+
+// ---------- fit to screen ----------
+
+// family-chart fits the tree to the screen only on the first draw, and if the chart area has no size
+// at that moment (window hidden, still laying out) every card lands off-screen. Refit once it has a
+// size, and let people refit by hand after zooming or dragging the tree away.
+function setupFit() {
+  const area = $('#FamilyChart');
+  $('#fit-btn').addEventListener('click', () => chart?.updateTree({ tree_position: 'fit' }));
+
+  let hadSize = false;
+  new ResizeObserver(() => {
+    const hasSize = area.clientWidth > 0 && area.clientHeight > 0;
+    if (chart && hasSize && !hadSize) chart.updateTree({ tree_position: 'fit', transition_time: 0 });
+    hadSize = hasSize;
+  }).observe(area);
 }
 
 // ---------- search ----------

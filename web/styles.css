@@ -230,7 +230,18 @@ body[data-view="app"] .floating-controls { display: none; }
 
 /* ---------- app shell ---------- */
 
-.app { height: 100dvh; display: flex; flex-direction: column; }
+.app { position: relative; height: 100dvh; display: flex; flex-direction: column; }
+
+.fit-btn {
+  position: absolute;
+  left: 16px;
+  bottom: 16px;
+  z-index: 5;
+  background: var(--surface);
+  border-color: var(--border);
+  box-shadow: var(--shadow);
+}
+.fit-btn:hover { background: var(--surface-2); }
 
 .topbar {
   position: relative;
@@ -318,6 +329,10 @@ body[data-view="app"] .floating-controls { display: none; }
 .f3 div.card-new-rel.card-female .card-inner,
 .f3 div.card-to-add.card-female .card-inner,
 .f3 div.card-unknown.card-female .card-inner { color: var(--female-strong); border-color: var(--female-strong); }
+/* small family icon above a card whose relatives aren't all shown; click the card to see them */
+.f3 div.mini-tree line { stroke: var(--link); stroke-width: 2px; }
+.f3 div.mini-tree rect.card-male { fill: var(--male-strong); }
+.f3 div.mini-tree rect.card-female { fill: var(--female-strong); }
 .f3 .f3-modal-content { background: var(--surface); color: var(--text); border-color: var(--border); }
 .f3 .f3-modal-options { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 .f3 .f3-modal-options .f3-btn { padding: 8px 14px; border: 1px solid var(--border); border-radius: 8px; color: var(--card-text); font: inherit; cursor: pointer; }

@@ -19,6 +19,7 @@ const STRINGS = {
     toDark: 'Switch to dark mode',
     toLight: 'Switch to light mode',
     language: 'Language',
+    fitTree: 'Fit the tree to the screen',
 
     loading: 'Loading family tree…',
     tryAgain: 'Try again',
@@ -101,6 +102,7 @@ const STRINGS = {
     toDark: 'Prepnúť na tmavý režim',
     toLight: 'Prepnúť na svetlý režim',
     language: 'Jazyk',
+    fitTree: 'Zobraziť celý strom na obrazovke',
 
     loading: 'Načítava sa rodokmeň…',
     tryAgain: 'Skúsiť znova',
