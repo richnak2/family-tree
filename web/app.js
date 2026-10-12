@@ -5,20 +5,20 @@ const API_BASE = window.FAMILY_TREE_CONFIG.apiBase.replace(/\/+$/, '');
 const TOKEN_KEY = 'familyTree.token';
 const SYNC_CHUNK = 40; // must not exceed MAX_CHANGES_PER_REQUEST in worker/index.js
 
-// Fields in the person panel. `id` is the key stored in the database.
+// Fields in the person panel. `id` is the key stored in the database; labels are in i18n.js ("field:<id>").
 const FIELDS = [
-  { id: 'first name', label: 'First name', type: 'text' },
-  { id: 'last name', label: 'Last name', type: 'text' },
-  { id: 'maiden name', label: 'Maiden name', type: 'text' },
-  { id: 'birthday', label: 'Born', type: 'date' },
-  { id: 'birthplace', label: 'Place of birth', type: 'text' },
-  { id: 'deathday', label: 'Died', type: 'date' },
-  { id: 'occupation', label: 'Occupation', type: 'text' },
-  { id: 'phone', label: 'Phone', type: 'tel' },
-  { id: 'email', label: 'Email', type: 'email' },
-  { id: 'address', label: 'Address', type: 'text' },
-  { id: 'notes', label: 'Notes', type: 'textarea' },
-  { id: 'avatar', label: 'Photo', type: 'photo' },
+  { id: 'first name', type: 'text' },
+  { id: 'last name', type: 'text' },
+  { id: 'maiden name', type: 'text' },
+  { id: 'birthday', type: 'date' },
+  { id: 'birthplace', type: 'text' },
+  { id: 'deathday', type: 'date' },
+  { id: 'occupation', type: 'text' },
+  { id: 'phone', type: 'tel' },
+  { id: 'email', type: 'email' },
+  { id: 'address', type: 'text' },
+  { id: 'notes', type: 'textarea' },
+  { id: 'avatar', type: 'photo' },
 ];
 const PROFILE_FIELDS = new Set(['first name', 'last name', 'avatar']); // shown in the header, not the facts list
 const AVATAR_RE = /^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$/;
@@ -34,8 +34,11 @@ let editTree = null;
 let saved = new Map(); // person id -> JSON of what the server has
 let syncQueue = Promise.resolve();
 let syncState = 'idle';
+let syncError = '';
+let paintThemeButtons = () => {};
 
 setupTheme();
+setupLanguage();
 setupLogin();
 setupSearch();
 $('#lock-btn').addEventListener('click', lock);
@@ -95,7 +98,7 @@ function showLogin(message = '') {
   document.body.dataset.view = 'login';
   $('#app-view').hidden = true;
   $('#login-view').hidden = false;
-  if (API_BASE.includes('YOUR-SUBDOMAIN')) message = 'The API address is not set yet. Update web/config.js.';
+  if (API_BASE.includes('YOUR-SUBDOMAIN')) message = t('apiNotSet');
   showLoginError(message);
   $('#password').focus();
 }
@@ -107,7 +110,7 @@ function showLoginError(message) {
 }
 
 function lock() {
-  if (hasUnsavedChanges() && !confirm('Some changes are not saved yet. Lock anyway?')) return;
+  if (hasUnsavedChanges() && !confirm(t('lockUnsaved'))) return;
   syncState = 'idle';
   setToken(null);
   location.reload();
@@ -122,16 +125,18 @@ async function api(path, { method = 'GET', body } = {}) {
   try {
     res = await fetch(API_BASE + path, { method, headers, body: body ? JSON.stringify(body) : undefined });
   } catch {
-    throw new Error('Cannot reach the server. Check your connection and try again.');
+    throw new Error(t('cannotReach'));
   }
 
   const data = await res.json().catch(() => ({}));
   if (res.status === 401 && path !== '/api/login') {
     setToken(null);
-    showLogin('Your session expired. Please enter the password again.');
+    showLogin(t('sessionExpired'));
   }
   if (!res.ok) {
-    const err = new Error(data.error || `Request failed (${res.status})`);
+    const message =
+      res.status === 401 && path === '/api/login' ? t('wrongPassword') : data.error || t('requestFailed', res.status);
+    const err = new Error(message);
     err.status = res.status;
     throw err;
   }
@@ -150,7 +155,7 @@ async function openApp() {
     return;
   }
 
-  showChartMessage('Loading family tree…');
+  showChartMessage(t('loading'));
   try {
     const { people } = await api('/api/people');
     hideChartMessage();
@@ -177,14 +182,14 @@ function buildChart(people) {
     .setTransitionTime(600)
     .setCardXSpacing(260)
     .setCardYSpacing(170)
-    .setSingleParentEmptyCard(true, { label: 'Unknown' });
+    .setSingleParentEmptyCard(true, { label: t('unknown') });
 
   // family-chart inserts card text as HTML, so everything we hand it is escaped.
   const card = chart
     .setCardHtml()
     .setStyle('imageRect')
     .setCardImageField('avatar')
-    .setCardDisplay([(d) => escapeHtml(fullName(d) || 'Unnamed'), (d) => escapeHtml(lifespan(d))])
+    .setCardDisplay([(d) => escapeHtml(fullName(d) || t('unnamed')), (d) => escapeHtml(lifespan(d))])
     .setMiniTree(true)
     .setOnHoverPathToMain();
 
@@ -194,16 +199,19 @@ function buildChart(people) {
     .setFields(FIELDS)
     .setEditFirst(isEmpty)
     .setCardClickOpen(card)
-    .setLinkExistingRelConfig({
-      linkRelLabel: (d) => fullName(d) || 'Unnamed',
-      title: 'Or link someone already in the tree',
-      select_placeholder: 'Choose a person',
-    })
     .setCreateFormEdit(createPersonPanel)
     .setCreateFormNew(createPersonPanel)
     .setPostSubmit(refreshAddRelativeCards)
     .setOnChange(scheduleSync);
 
+  // The only dialog family-chart shows itself (removing a partner who has children); translate it.
+  const showModal = editTree.modal.activate.bind(editTree.modal);
+  editTree.modal.activate = (content, options) => {
+    translateModal(content);
+    showModal(content, options);
+  };
+
+  applyChartLanguage();
   chart.updateTree({ initial: true });
   if (isEmpty) editTree.open(chart.getMainDatum());
   editTree.setEditFirst(false);
@@ -224,6 +232,34 @@ function refreshAddRelativeCards(submitted) {
   } finally {
     adding.cancelCallback = reopen;
   }
+}
+
+// Labels family-chart draws itself: placeholder cards and the "link existing person" picker.
+function applyChartLanguage() {
+  chart.store.state.single_parent_empty_card_label = t('unknown');
+  chart.store.state.unknown_card_label = t('unknown');
+  editTree.setAddRelLabels({
+    father: t('addFather'),
+    mother: t('addMother'),
+    spouse: t('addSpouse'),
+    son: t('addSon'),
+    daughter: t('addDaughter'),
+  });
+  editTree.setLinkExistingRelConfig({
+    linkRelLabel: (d) => fullName(d) || t('unnamed'),
+    title: t('linkExisting'),
+    select_placeholder: t('choosePerson'),
+  });
+}
+
+function translateModal(content) {
+  if (!(content instanceof Element)) return;
+  const toCurrent = content.querySelector('[data-option="assign-to-current"]');
+  const toSpouse = content.querySelector('[data-option="assign-to-spouse"]');
+  const question = content.querySelector('p');
+  if (toCurrent) toCurrent.textContent = t('keepWithCurrent');
+  if (toSpouse) toSpouse.textContent = t('keepWithSpouse');
+  if (question && toCurrent) question.textContent = t('removeSpouseQuestion');
 }
 
 function newPerson() {
@@ -299,12 +335,13 @@ function hasUnsavedChanges() {
 
 function setStatus(state, message = '') {
   syncState = state;
+  syncError = message;
   const box = $('#save-status');
   box.dataset.state = state;
   box.title = message;
-  if (state === 'saving') box.replaceChildren('Saving…');
-  else if (state === 'saved') box.replaceChildren('Saved');
-  else if (state === 'error') box.replaceChildren('Not saved · ', button('Retry', 'link-btn', scheduleSync));
+  if (state === 'saving') box.replaceChildren(t('saving'));
+  else if (state === 'saved') box.replaceChildren(t('saved'));
+  else if (state === 'error') box.replaceChildren(`${t('notSaved')} · `, button(t('retry'), 'link-btn', scheduleSync));
   else box.replaceChildren();
 }
 
@@ -329,15 +366,15 @@ function createPersonPanel(fc, close) {
   }
 
   function detailsView() {
-    const name = personName() || 'Unnamed';
+    const name = personName() || t('unnamed');
     const avatar = value('avatar');
     const gender = fc.gender_field.initial_value;
     const years = lifespan({ data: { birthday: value('birthday'), deathday: value('deathday') } });
     const facts = fc.fields.filter((f) => !PROFILE_FIELDS.has(f.id) && f.initial_value);
 
     let hint = null;
-    if (fc.addRelativeActive) hint = 'Click one of the dashed “Add …” cards in the tree to add that relative.';
-    if (fc.removeRelativeActive) hint = 'Click the relative you want to disconnect from this person.';
+    if (fc.addRelativeActive) hint = t('hintAdding');
+    if (fc.removeRelativeActive) hint = t('hintRemoving');
 
     return el(
       'div',
@@ -355,22 +392,22 @@ function createPersonPanel(fc, close) {
       el(
         'dl',
         { class: 'facts' },
-        gender ? el('dt', {}, 'Gender') : null,
-        gender ? el('dd', {}, gender === 'F' ? 'Female' : 'Male') : null,
-        ...facts.flatMap((f) => [el('dt', {}, f.label), el('dd', {}, factValue(f))]),
+        gender ? el('dt', {}, t('gender')) : null,
+        gender ? el('dd', {}, gender === 'F' ? t('female') : t('male')) : null,
+        ...facts.flatMap((f) => [el('dt', {}, fieldLabel(f)), el('dd', {}, factValue(f))]),
       ),
-      facts.length ? null : el('p', { class: 'muted' }, 'No details yet. Click “Edit details” to add some.'),
+      facts.length ? null : el('p', { class: 'muted' }, t('noDetails')),
       hint ? el('p', { class: 'hint' }, hint) : null,
       el(
         'div',
         { class: 'panel-actions' },
-        fc.no_edit ? null : button('Edit details', 'btn btn-primary', () => {
+        fc.no_edit ? null : button(t('editDetails'), 'btn btn-primary', () => {
           fc.editable = true;
           render();
         }),
-        fc.no_edit ? null : button(fc.addRelativeActive ? 'Cancel adding' : 'Add relative', 'btn', toggleAddRelative),
-        fc.no_edit ? null : button(fc.removeRelativeActive ? 'Cancel removing' : 'Remove relation', 'btn', toggleRemoveRelative),
-        fc.no_edit ? null : button('Delete person', 'btn btn-danger', deletePerson, !fc.can_delete),
+        fc.no_edit ? null : button(fc.addRelativeActive ? t('cancelAdding') : t('addRelative'), 'btn', toggleAddRelative),
+        fc.no_edit ? null : button(fc.removeRelativeActive ? t('cancelRemoving') : t('removeRelation'), 'btn', toggleRemoveRelative),
+        fc.no_edit ? null : button(t('deletePerson'), 'btn btn-danger', deletePerson, !fc.can_delete),
       ),
       linkExisting(),
     );
@@ -385,7 +422,7 @@ function createPersonPanel(fc, close) {
 
   function editView() {
     const name = personName();
-    const title = isNew ? fc.title : name ? `Edit ${name}` : 'New person';
+    const title = isNew ? fc.title : name ? t('editTitle', name) : t('newPerson');
     const form = el(
       'form',
       { class: 'panel person-form' },
@@ -396,8 +433,8 @@ function createPersonPanel(fc, close) {
       el(
         'div',
         { class: 'form-buttons' },
-        button('Cancel', 'btn', cancel),
-        el('button', { type: 'submit', class: 'btn btn-primary' }, 'Save'),
+        button(t('cancel'), 'btn', cancel),
+        el('button', { type: 'submit', class: 'btn btn-primary' }, t('save')),
       ),
       linkExisting(),
     );
@@ -415,13 +452,13 @@ function createPersonPanel(fc, close) {
     return el(
       'fieldset',
       { class: 'gender' },
-      el('legend', {}, 'Gender'),
+      el('legend', {}, t('gender')),
       ...g.options.map((o) =>
         el(
           'label',
           { class: 'radio' },
           el('input', { type: 'radio', name: 'gender', value: o.value, checked: o.value === g.initial_value, disabled: g.disabled }),
-          o.label,
+          o.value === 'F' ? t('female') : t('male'),
         ),
       ),
     );
@@ -437,11 +474,11 @@ function createPersonPanel(fc, close) {
             id,
             name: f.id,
             type: f.type === 'date' ? 'text' : f.type,
-            placeholder: f.type === 'date' ? 'YYYY-MM-DD or just YYYY' : null,
+            placeholder: f.type === 'date' ? t('datePlaceholder') : null,
             autocomplete: 'off',
           });
     control.value = f.initial_value || '';
-    return el('div', { class: 'field' }, el('label', { for: id }, f.label), control);
+    return el('div', { class: 'field' }, el('label', { for: id }, fieldLabel(f)), control);
   }
 
   function photoInput(f) {
@@ -450,7 +487,7 @@ function createPersonPanel(fc, close) {
     const preview = el('img', { class: 'photo-preview', alt: '' });
     const fileInput = el('input', { type: 'file', id: 'photo-file', accept: 'image/*', class: 'visually-hidden' });
     const pick = el('label', { for: 'photo-file', class: 'btn' });
-    const remove = button('Remove', 'btn btn-quiet', () => {
+    const remove = button(t('removePhoto'), 'btn btn-quiet', () => {
       stored.value = '';
       refresh();
     });
@@ -464,7 +501,7 @@ function createPersonPanel(fc, close) {
       try {
         stored.value = await resizePhoto(file);
       } catch {
-        error.textContent = 'That image could not be read. Try a JPEG or PNG.';
+        error.textContent = t('photoError');
         error.hidden = false;
       }
       refresh();
@@ -474,7 +511,7 @@ function createPersonPanel(fc, close) {
       preview.hidden = !stored.value;
       if (stored.value) preview.src = stored.value;
       else preview.removeAttribute('src');
-      pick.textContent = stored.value ? 'Change photo' : 'Upload photo';
+      pick.textContent = stored.value ? t('changePhoto') : t('uploadPhoto');
       remove.hidden = !stored.value;
     }
     refresh();
@@ -482,7 +519,7 @@ function createPersonPanel(fc, close) {
     return el(
       'div',
       { class: 'field' },
-      el('span', { class: 'label' }, f.label),
+      el('span', { class: 'label' }, fieldLabel(f)),
       el('div', { class: 'photo-row' }, preview, pick, remove),
       fileInput,
       stored,
@@ -496,20 +533,20 @@ function createPersonPanel(fc, close) {
     const select = el(
       'select',
       { id: 'link-existing' },
-      el('option', { value: '' }, link.select_placeholder || 'Choose a person'),
+      el('option', { value: '' }, link.select_placeholder || t('choosePerson')),
       ...link.options.map((o) => el('option', { value: o.value }, String(o.label))),
     );
     select.addEventListener('change', link.onSelect);
     return el(
       'div',
       { class: 'field link-existing' },
-      el('label', { for: 'link-existing' }, link.title || 'Or link someone already in the tree'),
+      el('label', { for: 'link-existing' }, link.title || t('linkExisting')),
       select,
     );
   }
 
   function panelTop() {
-    return el('div', { class: 'panel-top' }, button('×', 'icon-btn close-btn', close, false, 'Close'));
+    return el('div', { class: 'panel-top' }, button('×', 'icon-btn close-btn', close, false, t('close')));
   }
 
   function cancel() {
@@ -534,7 +571,7 @@ function createPersonPanel(fc, close) {
   }
 
   function deletePerson() {
-    if (confirm(`Delete ${personName() || 'this person'} from the family tree?`)) fc.onDelete();
+    if (confirm(t('confirmDelete', personName()))) fc.onDelete();
   }
 }
 
@@ -588,14 +625,14 @@ function setupSearch() {
         const pick = el(
           'button',
           { type: 'button' },
-          el('span', {}, fullName(d) || 'Unnamed'),
+          el('span', {}, fullName(d) || t('unnamed')),
           el('span', { class: 'years' }, lifespan(d)),
         );
         pick.addEventListener('click', () => select(d.id));
         return el('li', { role: 'option' }, pick);
       }),
     );
-    if (query && !matches.length) list.append(el('li', { class: 'empty' }, 'No one found'));
+    if (query && !matches.length) list.append(el('li', { class: 'empty' }, t('noOneFound')));
     list.hidden = !query;
   }
 
@@ -626,10 +663,11 @@ function setupTheme() {
     const dark = current() === 'dark';
     for (const btn of buttons) {
       btn.innerHTML = dark ? SUN_ICON : MOON_ICON;
-      btn.title = dark ? 'Switch to light mode' : 'Switch to dark mode';
+      btn.title = dark ? t('toLight') : t('toDark');
       btn.setAttribute('aria-label', btn.title);
     }
   }
+  paintThemeButtons = paint;
 
   for (const btn of buttons) {
     btn.addEventListener('click', () => {
@@ -645,7 +683,51 @@ function setupTheme() {
   paint();
 }
 
+// ---------- language ----------
+
+function setupLanguage() {
+  for (const btn of document.querySelectorAll('.lang-switch button')) {
+    btn.addEventListener('click', () => setLanguage(btn.dataset.lang));
+  }
+  applyLanguage();
+}
+
+function setLanguage(next) {
+  if (next === lang || !LANGUAGES.includes(next)) return;
+  lang = next;
+  try {
+    localStorage.setItem(LANG_KEY, next);
+  } catch {}
+  applyLanguage();
+  if (chart) refreshChartLanguage();
+}
+
+function applyLanguage() {
+  translatePage();
+  for (const btn of document.querySelectorAll('.lang-switch button')) {
+    btn.setAttribute('aria-pressed', String(btn.dataset.lang === lang));
+  }
+  paintThemeButtons();
+  setStatus(syncState, syncError);
+}
+
+function refreshChartLanguage() {
+  applyChartLanguage();
+  // Cancelling redraws the tree and reopens the panel, now in the new language.
+  if (editTree.isAddingRelative()) return editTree.addRelativeInstance.onCancel();
+  if (editTree.isRemovingRelative()) return editTree.removeRelativeInstance.onCancel();
+
+  chart.updateTree({ tree_position: 'inherit' });
+  const panel = editTree.formCont.el;
+  const editing = panel?.querySelector('form'); // don't throw away what someone is typing
+  if (panel?.classList.contains('opened') && !editing) editTree.openFormWithId(chart.getMainDatum().id);
+}
+
 // ---------- helpers ----------
+
+function fieldLabel(field) {
+  return t(`field:${field.id}`);
+}
 
 function fullName(d) {
   return [d.data['first name'], d.data['last name']].filter(Boolean).join(' ');
@@ -659,8 +741,8 @@ function lifespan(d) {
   const born = year(d.data.birthday);
   const died = year(d.data.deathday);
   if (born && died) return `${born} – ${died}`;
-  if (born) return `b. ${born}`;
-  if (died) return `d. ${died}`;
+  if (born) return t('bornShort', born);
+  if (died) return t('diedShort', died);
   return '';
 }
 
@@ -683,7 +765,7 @@ function escapeHtml(text) {
 
 function showChartMessage(text, retry) {
   const box = $('#chart-message');
-  box.replaceChildren(el('p', {}, text), retry ? button('Try again', 'btn', retry) : '');
+  box.replaceChildren(el('p', {}, text), retry ? button(t('tryAgain'), 'btn', retry) : '');
   box.hidden = false;
 }
 

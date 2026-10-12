@@ -168,8 +168,38 @@ textarea { resize: vertical; }
 
 /* ---------- login ---------- */
 
-.theme-toggle.floating { position: fixed; top: 12px; right: 12px; z-index: 30; }
-body[data-view="app"] .theme-toggle.floating { display: none; }
+.floating-controls {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+body[data-view="app"] .floating-controls { display: none; }
+
+.lang-switch {
+  display: inline-flex;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+.lang-switch button {
+  min-width: 34px;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.lang-switch button:hover { color: var(--text); }
+.lang-switch button[aria-pressed="true"] { background: var(--accent); color: var(--accent-text); }
 
 .login { min-height: 100dvh; display: grid; place-items: center; padding: 24px 16px; }
 .login-card {
