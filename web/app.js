@@ -201,11 +201,29 @@ function buildChart(people) {
     })
     .setCreateFormEdit(createPersonPanel)
     .setCreateFormNew(createPersonPanel)
+    .setPostSubmit(refreshAddRelativeCards)
     .setOnChange(scheduleSync);
 
   chart.updateTree({ initial: true });
   if (isEmpty) editTree.open(chart.getMainDatum());
   editTree.setEditFirst(false);
+}
+
+// family-chart creates one "Add Son"/"Add Daughter"/"Add Spouse" card when add mode starts and
+// doesn't replace it once used. Rebuild the cards after each new relative so several children
+// can be added in a row without leaving add mode.
+function refreshAddRelativeCards(submitted) {
+  const adding = editTree.addRelativeInstance;
+  const person = adding.datum;
+  if (!adding.is_active || !person || submitted.id === person.id) return;
+
+  const reopen = adding.cancelCallback;
+  adding.cancelCallback = () => {}; // activate() cancels first; skip the redraw/re-open that does
+  try {
+    adding.activate(person);
+  } finally {
+    adding.cancelCallback = reopen;
+  }
 }
 
 function newPerson() {
